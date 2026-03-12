@@ -1602,7 +1602,7 @@ maintenance_merge_similarity_threshold = 1.1
                 dm_allowed_users: vec![],
             },
         ];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert_eq!(result.len(), 2);
     }
@@ -1634,7 +1634,7 @@ maintenance_merge_similarity_threshold = 1.1
             require_mention: false,
             dm_allowed_users: vec![],
         }];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert!(result.is_empty(), "unresolvable binding should be skipped");
     }
@@ -1699,7 +1699,7 @@ maintenance_merge_similarity_threshold = 1.1
             require_mention: false,
             dm_allowed_users: vec![],
         }];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert!(
             result.is_empty(),
@@ -1740,7 +1740,7 @@ maintenance_merge_similarity_threshold = 1.1
             require_mention: false,
             dm_allowed_users: vec![],
         }];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert!(
             result.is_empty(),
@@ -1819,7 +1819,7 @@ maintenance_merge_similarity_threshold = 1.1
                 dm_allowed_users: vec![],
             },
         ];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert_eq!(
             result.len(),
@@ -1852,11 +1852,115 @@ maintenance_merge_similarity_threshold = 1.1
             require_mention: false,
             dm_allowed_users: vec![],
         }];
-        let result = validate_named_messaging_adapters(&messaging, bindings)
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
             .expect("bindings should be resolvable");
         assert!(
             result.is_empty(),
             "binding with no messaging config should be skipped"
+        );
+    }
+
+    #[test]
+    fn validate_strict_mode_rejects_missing_messaging_config() {
+        let messaging = MessagingConfig {
+            discord: None,
+            slack: None,
+            telegram: None,
+            email: None,
+            webhook: None,
+            twitch: None,
+            signal: None,
+        };
+        let bindings = vec![Binding {
+            agent_id: "main".into(),
+            channel: "telegram".into(),
+            adapter: None,
+            guild_id: None,
+            workspace_id: None,
+            chat_id: None,
+            channel_ids: vec![],
+            require_mention: false,
+            dm_allowed_users: vec![],
+        }];
+        let result = validate_named_messaging_adapters(&messaging, bindings, true);
+        assert!(
+            result.is_err(),
+            "strict mode should reject unresolvable bindings"
+        );
+    }
+
+    #[test]
+    fn validate_disabled_instance_is_filtered_out() {
+        let messaging = MessagingConfig {
+            discord: None,
+            slack: None,
+            telegram: Some(TelegramConfig {
+                enabled: true,
+                token: "tok".into(),
+                instances: vec![TelegramInstanceConfig {
+                    name: "support".into(),
+                    enabled: false,
+                    token: "tok2".into(),
+                    dm_allowed_users: vec![],
+                }],
+                dm_allowed_users: vec![],
+            }),
+            email: None,
+            webhook: None,
+            twitch: None,
+            signal: None,
+        };
+        let bindings = vec![Binding {
+            agent_id: "main".into(),
+            channel: "telegram".into(),
+            adapter: Some("support".into()),
+            guild_id: None,
+            workspace_id: None,
+            chat_id: None,
+            channel_ids: vec![],
+            require_mention: false,
+            dm_allowed_users: vec![],
+        }];
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
+            .expect("bindings should be resolvable");
+        assert!(
+            result.is_empty(),
+            "binding to disabled instance should be skipped"
+        );
+    }
+
+    #[test]
+    fn validate_disabled_platform_default_is_filtered_out() {
+        let messaging = MessagingConfig {
+            discord: None,
+            slack: None,
+            telegram: Some(TelegramConfig {
+                enabled: false,
+                token: "tok".into(),
+                instances: vec![],
+                dm_allowed_users: vec![],
+            }),
+            email: None,
+            webhook: None,
+            twitch: None,
+            signal: None,
+        };
+        let bindings = vec![Binding {
+            agent_id: "main".into(),
+            channel: "telegram".into(),
+            adapter: None,
+            guild_id: None,
+            workspace_id: None,
+            chat_id: None,
+            channel_ids: vec![],
+            require_mention: false,
+            dm_allowed_users: vec![],
+        }];
+        let result = validate_named_messaging_adapters(&messaging, bindings, false)
+            .expect("bindings should be resolvable");
+        assert!(
+            result.is_empty(),
+            "binding to disabled platform default should be skipped"
         );
     }
 
