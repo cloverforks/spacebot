@@ -803,7 +803,9 @@ impl std::fmt::Display for CardFooter {
 /// LLMs sometimes send `"footer": "plain text"` and sometimes
 /// `"footer": {"text": "rich text", "icon_url": "..."}`.
 /// This handles both forms so the tool call doesn't fail.
-fn deserialize_card_footer<'de, D>(deserializer: D) -> std::result::Result<Option<CardFooter>, D::Error>
+fn deserialize_card_footer<'de, D>(
+    deserializer: D,
+) -> std::result::Result<Option<CardFooter>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
@@ -826,7 +828,10 @@ where
             Ok(Some(CardFooter::new(value)))
         }
 
-        fn visit_map<M: de::MapAccess<'de>>(self, mut map: M) -> std::result::Result<Self::Value, M::Error> {
+        fn visit_map<M: de::MapAccess<'de>>(
+            self,
+            mut map: M,
+        ) -> std::result::Result<Self::Value, M::Error> {
             let mut text = None;
             let mut icon_url = None;
 
@@ -990,7 +995,10 @@ mod tests {
         let card: Card = serde_json::from_str(json).expect("should parse footer as object");
         assert!(card.footer.is_some());
         assert_eq!(card.footer.as_ref().unwrap().text, "rich text");
-        assert_eq!(card.footer.as_ref().unwrap().icon_url, Some("http://example.com/icon.png".to_string()));
+        assert_eq!(
+            card.footer.as_ref().unwrap().icon_url,
+            Some("http://example.com/icon.png".to_string())
+        );
     }
 
     #[test]
